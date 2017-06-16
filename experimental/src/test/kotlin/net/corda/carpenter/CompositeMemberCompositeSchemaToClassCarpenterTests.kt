@@ -73,6 +73,5 @@ class CompositeMemberCompositeSchemaToClassCarpenterTests {
         assertEquals ((ccB.getMethod("getA").invoke(instanceB) as A).a, amqpObj.a.a)
         assertEquals (ccB.getMethod("getB").invoke(instanceB), amqpObj.b)
     }
-
 }
 
