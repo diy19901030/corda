@@ -17,30 +17,10 @@ class Dummy2 (a: String, override val b: Int) : DummyInterface2 {
 }
 
 class ClassCarpenterTest {
-    /*
-    cw.visitInnerClass(
-        "net/corda/carpenter/ClassCarpenterTest$DummyInterface",
-        "net/corda/carpenter/ClassCarpenterTest",
-        "DummyInterface",
-        ACC_PUBLIC + ACC_STATIC + ACC_ABSTRACT + ACC_INTERFACE);
-    */
     interface DummyInterface {
         val a: String
         val b: Int
     }
-
-    /*
-    cw.visitInnerClass(
-        "net/corda/carpenter/ClassCarpenterTest$Dummy",
-        "net/corda/carpenter/ClassCarpenterTest",
-        "Dummy",
-        ACC_PUBLIC + ACC_FINAL + ACC_STATIC);
-    */
-    class Dummy (override val a: String, override val b: Int) : DummyInterface
-
-    val dummy = Dummy ("hi", 1)
-    val dummy2 = Dummy2 ("hi", 1)
-
 
     val cc = ClassCarpenter()
 
@@ -172,17 +152,10 @@ class ClassCarpenterTest {
         assertEquals(iface.declaredMethods.size, 1)
         assertEquals(iface.declaredMethods[0].name, "getA")
 
-<<<<<<< HEAD
-        val schema2 = ClassCarpenter.ClassSchema("gen.Derived", mapOf("a" to Int::class.java), interfaces = listOf(iface))
-        val clazz = cc.build(schema2)
-        val testA = 42
-        val i = clazz.constructors[0].newInstance(testA) as SimpleFieldAccess
-=======
         val schema2 = ClassSchema("gen.Derived", mapOf("a" to Int::class.java), interfaces = listOf(iface))
         val clazz   = cc.build(schema2)
         val testA   = 42
         val i       = clazz.constructors[0].newInstance(testA) as SimpleFieldAccess
->>>>>>> WIP
 
         assertEquals(testA, i["a"])
     }

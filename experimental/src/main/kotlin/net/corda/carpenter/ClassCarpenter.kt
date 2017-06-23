@@ -68,6 +68,8 @@ class ClassCarpenter {
     // TODO: Support annotations.
     // TODO: isFoo getter patterns for booleans (this is what Kotlin generates)
 
+    private val String.jvm: String get() = replace(".", "/")
+
     class DuplicateName : RuntimeException("An attempt was made to register two classes with the same name within the same ClassCarpenter namespace.")
     class InterfaceMismatch(msg: String) : RuntimeException(msg)
 
