@@ -7,14 +7,6 @@ import kotlin.test.assertEquals
 import net.corda.core.serialization.carpenter.ClassSchema
 import net.corda.core.serialization.carpenter.InterfaceSchema
 
-interface DummyInterface2 {
-    val a: String
-    val b: Int
-}
-
-class Dummy2 (a: String, override val b: Int) : DummyInterface2 {
-    override val a = a
-}
 
 class ClassCarpenterTest {
     interface DummyInterface {
@@ -153,9 +145,9 @@ class ClassCarpenterTest {
         assertEquals(iface.declaredMethods[0].name, "getA")
 
         val schema2 = ClassSchema("gen.Derived", mapOf("a" to Int::class.java), interfaces = listOf(iface))
-        val clazz   = cc.build(schema2)
-        val testA   = 42
-        val i       = clazz.constructors[0].newInstance(testA) as SimpleFieldAccess
+        val clazz = cc.build(schema2)
+        val testA = 42
+        val i = clazz.constructors[0].newInstance(testA) as SimpleFieldAccess
 
         assertEquals(testA, i["a"])
     }
@@ -165,7 +157,7 @@ class ClassCarpenterTest {
         val iFace1 = InterfaceSchema("gen.Interface1", mapOf("a" to Int::class.java, "b" to String::class.java))
         val iFace2 = InterfaceSchema("gen.Interface2", mapOf("c" to Int::class.java, "d" to String::class.java))
 
-        val class1 = ClassCarpenter.ClassSchema(
+        val class1 = ClassSchema(
                 "gen.Derived",
                 mapOf(
                         "a" to Int::class.java,
@@ -189,20 +181,20 @@ class ClassCarpenterTest {
 
     @Test
     fun `interface implementing interface`() {
-        val iFace1 = ClassCarpenter.InterfaceSchema(
+        val iFace1 = InterfaceSchema(
                 "gen.Interface1",
                 mapOf(
                         "a" to Int::class.java,
                         "b" to String::class.java))
 
-        val iFace2 = ClassCarpenter.InterfaceSchema(
+        val iFace2 = InterfaceSchema(
                 "gen.Interface2",
                 mapOf(
                         "c" to Int::class.java,
                         "d" to String::class.java),
                 interfaces = listOf(cc.build(iFace1)))
 
-        val class1 = ClassCarpenter.ClassSchema(
+        val class1 = ClassSchema(
                 "gen.Derived",
                 mapOf(
                         "a" to Int::class.java,
