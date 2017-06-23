@@ -1,7 +1,6 @@
 package net.corda.carpenter
 
 import net.corda.core.serialization.CordaSerializable
-import net.corda.core.serialization.ClassCarpenterSchema
 import net.corda.core.serialization.amqp.*
 import org.junit.Test
 import kotlin.test.assertEquals

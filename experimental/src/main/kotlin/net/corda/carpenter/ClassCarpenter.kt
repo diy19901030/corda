@@ -3,7 +3,9 @@ package net.corda.carpenter
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes.*
-import net.corda.core.serialization.ClassCarpenterSchema
+import net.corda.core.serialization.carpenter.Schema
+import net.corda.core.serialization.carpenter.ClassSchema
+import net.corda.core.serialization.carpenter.InterfaceSchema
 import java.lang.Character.*
 import java.util.*
 
@@ -79,12 +81,10 @@ class ClassCarpenter {
 
     private val classloader = CarpenterClassLoader()
 
-    fun classLoader() = classloader as ClassLoader
-
     private val _loaded = HashMap<String, Class<*>>()
 
     /** Returns a snapshot of the currently loaded classes as a map of full class name (package names+dots) -> class object */
-    fun loaded() : Map<String, Class<*>> = HashMap(_loaded)
+    val loaded: Map<String, Class<*>> = HashMap(_loaded)
 
     /**
      * Generate bytecode for the given schema and load into the JVM. The returned class object can be used to
@@ -92,17 +92,18 @@ class ClassCarpenter {
      *
      * @throws DuplicateName if the schema's name is already taken in this namespace (you can create a new ClassCarpenter if you're OK with ambiguous names)
      */
-    fun build(schema: ClassCarpenterSchema): Class<*> {
+    fun build(schema: Schema): Class<*> {
         validateSchema(schema)
         // Walk up the inheritance hierarchy and then start walking back down once we either hit the top, or
         // find a class we haven't generated yet.
-        val hierarchy = ArrayList<ClassCarpenterSchema>()
+        val hierarchy = ArrayList<Schema>()
         hierarchy += schema
         var cursor = schema.superclass
         while (cursor != null && cursor.name !in _loaded) {
             hierarchy += cursor
             cursor = cursor.superclass
         }
+
         hierarchy.reversed().forEach {
             when (it) {
                 is InterfaceSchema -> generateInterface(it)
@@ -158,7 +159,7 @@ class ClassCarpenter {
         return clazz
     }
 
-    private fun ClassWriter.generateFields(schema: ClassCarpenterSchema) {
+    private fun ClassWriter.generateFields(schema: Schema) {
         for ((name, desc) in schema.descriptors) {
             visitField(ACC_PROTECTED + ACC_FINAL, name, desc, null, null).visitEnd()
         }
@@ -206,18 +207,6 @@ class ClassCarpenter {
     private fun ClassWriter.generateGetters(schema: Schema) {
         for ((name, type) in schema.fields) {
             val descriptor = schema.descriptors[name]
-            val opcodes    = ACC_ABSTRACT + ACC_PUBLIC
-            with (visitMethod(opcodes, "get" + name.capitalize(), "()" + descriptor, null, null)) {
-                // abstract method doesn't have any implementation so just end
-                visitMaxs(0, 0)
-                visitEnd()
-            }
-        }
-    }
-
-    private fun ClassWriter.generateGetters(jvmName: String, schema: ClassCarpenterSchema) {
-        for ((name, type) in schema.fields) {
-            val descriptor = schema.descriptors[name]
             val opcodes    = ACC_PUBLIC
             with(visitMethod(opcodes, "get" + name.capitalize(), "()" + descriptor, null, null)) {
                 visitCode()
@@ -234,7 +223,6 @@ class ClassCarpenter {
                 visitEnd()
             }
         }
-
     }
 
     private fun ClassWriter.generateAbstractGetters(schema: Schema) {
@@ -295,7 +283,7 @@ class ClassCarpenter {
         }
     }
 
-    private fun validateSchema(schema: ClassCarpenterSchema) {
+    private fun validateSchema(schema: Schema) {
         if (schema.name in _loaded) throw DuplicateName()
         fun isJavaName(n: String) = n.isNotBlank() && isJavaIdentifierStart(n.first()) && n.all(::isJavaIdentifierPart)
         require(isJavaName(schema.name.split(".").last())) { "Not a valid Java name: ${schema.name}" }
