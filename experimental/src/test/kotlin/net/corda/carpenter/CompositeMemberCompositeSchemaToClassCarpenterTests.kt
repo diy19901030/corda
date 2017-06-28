@@ -2,16 +2,23 @@ package net.corda.carpenter
 
 import net.corda.core.serialization.CordaSerializable
 import net.corda.core.serialization.amqp.*
+
 import org.junit.Test
 import kotlin.test.assertEquals
+import net.corda.carpenter.test.*
 
-class Inheritance {
-    private var factory = SerializerFactory()
+@CordaSerializable
+interface I_ {
+    val a: Int
+}
 
-    fun serialise(clazz: Any) = SerializationOutput(factory).serialize(clazz)
+/*
+ * Where a class has a member that is also a composite type or interface
+ */
+class CompositeMembers : AmqpCarpenterBase() {
 
     @Test
-    fun nestedInts() {
+    fun bothKnown () {
         val testA = 10
         val testB = 20
 
@@ -19,9 +26,9 @@ class Inheritance {
         data class A(val a: Int)
 
         @CordaSerializable
-        class B (val a: A, var b: Int)
+        data class B (val a: A, var b: Int)
 
-        var b = B(A(testA), testB)
+        val b = B(A(testA), testB)
 
         val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
 
@@ -53,29 +60,244 @@ class Inheritance {
 
         assertEquals(1,     amqpSchemaA?.fields?.size)
         assertEquals("a",   amqpSchemaA!!.fields[0].name)
-        assertEquals("int", amqpSchemaA!!.fields[0].type)
-
+        assertEquals("int", amqpSchemaA.fields[0].type)
 
         assertEquals(2,     amqpSchemaB?.fields?.size)
         assertEquals("a",   amqpSchemaB!!.fields[0].name)
-        assertEquals("${this.javaClass.name}\$nestedInts\$A", amqpSchemaB!!.fields[0].type)
-        assertEquals("b",   amqpSchemaB!!.fields[1].name)
-        assertEquals("int", amqpSchemaB!!.fields[1].type)
+//        assertEquals("${this.javaClass.name}\$${this.javaClass.enclosingMethod.name}\$A", amqpSchemaB!!.fields[0].type)
+        assertEquals("b",   amqpSchemaB.fields[1].name)
+        assertEquals("int", amqpSchemaB.fields[1].type)
 
-        var ccA = ClassCarpenter().build(amqpSchemaA.carpenterSchema())
-        var ccB = ClassCarpenter().build(amqpSchemaB.carpenterSchema())
+//        var ccA = ClassCarpenter().build(amqpSchemaA.carpenterSchema())
+//        var ccB = ClassCarpenter().build(amqpSchemaB.carpenterSchema())
 
         /*
          * Since A is known to the JVM we can't constuct B with and instance of the carpented A but
          * need to use the defined one above
          */
-        val instanceA = ccA.constructors[0].newInstance(testA)
-        val instanceB = ccB.constructors[0].newInstance(A (testA), testB)
+//        val instanceA = ccA.constructors[0].newInstance(testA)
+//        val instanceB = ccB.constructors[0].newInstance(A (testA), testB)
 
-        assertEquals (ccA.getMethod("getA").invoke(instanceA), amqpObj.a.a)
-        assertEquals ((ccB.getMethod("getA").invoke(instanceB) as A).a, amqpObj.a.a)
-        assertEquals (ccB.getMethod("getB").invoke(instanceB), amqpObj.b)
+//        assertEquals (ccA.getMethod("getA").invoke(instanceA), amqpObj.a.a)
+//        assertEquals ((ccB.getMethod("getA").invoke(instanceB) as A).a, amqpObj.a.a)
+//        assertEquals (ccB.getMethod("getB").invoke(instanceB), amqpObj.b)
 
+    }
+
+    /* you cannot have an element of a composite class we know about
+       that is unknown as that should be impossible. If we have the containing
+       class in the class path then we must have all of it's constituent elements */
+    @Test(expected = UncarpentableException::class)
+    fun nestedIsUnknown () {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+
+        @CordaSerializable
+        data class A(override val a: Int) : I_
+
+        @CordaSerializable
+        data class B(val a: A, var b: Int)
+          val b = B(A(testA), testB)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
+        val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A")))
+
+        assert(obj.first is B)
+
+        amqpSchema.carpenterSchema()
+    }
+
+    @Test
+    fun ParentIsUnknown () {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+
+        @CordaSerializable
+        data class A(override val a: Int) : I_
+
+        @CordaSerializable
+        data class B(val a: A, var b: Int)
+        val b = B(A(testA), testB)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
+
+        assert(obj.first is B)
+
+        val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("B")))
+
+        val carpenterSchema = amqpSchema.carpenterSchema()
+
+        assertEquals (1, carpenterSchema.size)
+    }
+
+    @Test
+    fun BothUnkown () {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+
+        @CordaSerializable
+        data class A(override val a: Int) : I_
+
+        @CordaSerializable
+        data class B(val a: A, var b: Int)
+        val b = B(A(testA), testB)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
+
+        assert(obj.first is B)
+
+        val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
+
+        println (amqpSchema)
+    }
+
+    @Test
+    fun nestedIsUnkownInherited () {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+        val testC = 30
+
+        @CordaSerializable
+        open class A(val a: Int)
+
+        @CordaSerializable
+        class B(a: Int, var b: Int) : A (a)
+
+        @CordaSerializable
+        data class C(val b: B, var c: Int)
+
+        val c = C(B(testA, testB), testC)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(c))
+
+        assert(obj.first is B)
+
+        val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
+
+        println (amqpSchema)
+    }
+
+    @Test
+    fun nestedIsUnknownInheritedUnkown () {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+        val testC = 30
+
+        @CordaSerializable
+        open class A(val a: Int)
+
+        @CordaSerializable
+        class B(a: Int, var b: Int) : A (a)
+
+        @CordaSerializable
+        data class C(val b: B, var c: Int)
+
+        val c = C(B(testA, testB), testC)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(c))
+
+        assert(obj.first is B)
+
+        val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
+
+        println (amqpSchema)
+    }
+
+    @Test
+    fun parentsIsUnknownWithUnkownInheritedMember () {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+        val testC = 30
+
+        @CordaSerializable
+        open class A(val a: Int)
+
+        @CordaSerializable
+        class B(a: Int, var b: Int) : A (a)
+
+        @CordaSerializable
+        data class C(val b: B, var c: Int)
+
+        val c = C(B(testA, testB), testC)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(c))
+
+        assert(obj.first is B)
+
+        val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
+
+        println (amqpSchema)
+    }
+
+
+    /*
+     * In this case B holds an element of Interface I_ which is an A but we don't know of A
+     * but we do know about I_
+     */
+    @Test
+    fun nestedIsInterfaceToUnknown () {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+
+        @CordaSerializable
+        data class A(override val a: Int) : I_
+
+        @CordaSerializable
+        data class B(val a: A, var b: Int)
+          val b = B(A(testA), testB)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
+
+        assert(obj.first is B)
+
+        println (obj.second.schema)
+    }
+
+    @Test
+    fun nestedIsUnknownInterface() {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+
+        @CordaSerializable
+        data class A(override val a: Int) : I_
+
+        @CordaSerializable
+        data class B(val a: A, var b: Int)
+        val b = B(A(testA), testB)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
+
+        assert(obj.first is B)
+
+        println (obj.second.schema)
+    }
+
+    @Test
+    fun ParentsIsInterfaceToUnkown() {
+        println ("\n----\n")
+        val testA = 10
+        val testB = 20
+
+        @CordaSerializable
+        data class A(override val a: Int) : I_
+
+        @CordaSerializable
+        data class B(val a: A, var b: Int)
+        val b = B(A(testA), testB)
+
+        val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
+
+        assert(obj.first is B)
+
+        println (obj.second.schema)
     }
 }
 

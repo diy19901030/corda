@@ -62,6 +62,15 @@ interface SimpleFieldAccess {
  *
  * Equals/hashCode methods are not yet supported.
  */
+
+/**********************************************************************************************************************/
+
+class CarpenterClassLoader : ClassLoader(Thread.currentThread().contextClassLoader) {
+    fun load(name: String, bytes: ByteArray) = defineClass(name, bytes, 0, bytes.size)
+}
+
+/**********************************************************************************************************************/
+
 class ClassCarpenter {
     // TODO: Array types.
     // TODO: Generics.
@@ -75,11 +84,7 @@ class ClassCarpenter {
     class DuplicateName : RuntimeException("An attempt was made to register two classes with the same name within the same ClassCarpenter namespace.")
     class InterfaceMismatch(msg: String) : RuntimeException(msg)
 
-    private class CarpenterClassLoader : ClassLoader(Thread.currentThread().contextClassLoader) {
-        fun load(name: String, bytes: ByteArray) = defineClass(name, bytes, 0, bytes.size)
-    }
-
-    private val classloader = CarpenterClassLoader()
+    val classloader = CarpenterClassLoader()
 
     private val _loaded = HashMap<String, Class<*>>()
 
@@ -110,6 +115,8 @@ class ClassCarpenter {
                 is ClassSchema -> generateClass(it)
             }
         }
+
+        assert (schema.name in _loaded)
 
         return _loaded[schema.name]!!
     }
