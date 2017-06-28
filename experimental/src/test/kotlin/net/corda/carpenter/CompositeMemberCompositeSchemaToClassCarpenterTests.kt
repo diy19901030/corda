@@ -14,6 +14,8 @@ interface I_ {
 
 /*
  * Where a class has a member that is also a composite type or interface
+ *
+ * TODO - make this all not terrible as I'm not sure it's testing anything
  */
 class CompositeMembers : AmqpCarpenterBase() {
 

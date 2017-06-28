@@ -331,8 +331,9 @@ class InheritanceSchemaToClassCarpenterTests : AmqpCarpenterBase() {
          */
         assertEquals(4, serSchema.types.size)
 
-        val curruptSchema = serSchema.curruptName (listOf (
-                classTestName("A"), "${this.javaClass.getPackage().name}.I")).carpenterSchema()
+        /* ignore the return as we expect this to throw */
+        serSchema.curruptName (listOf (
+                classTestName("A"), "${this.javaClass.`package`.name}.I")).carpenterSchema()
     }
 
     @Test
@@ -356,10 +357,10 @@ class InheritanceSchemaToClassCarpenterTests : AmqpCarpenterBase() {
          */
         assertEquals(2, serSchema.types.size)
 
-        val amqpSchema = serSchema.curruptName (listOf (classTestName("A"), "${this.javaClass.getPackage().name}.I"))
+        val amqpSchema = serSchema.curruptName (listOf (classTestName("A"), "${this.javaClass.`package`.name}.I"))
 
         val aName = curruptName (classTestName("A"))
-        val iName = curruptName ("${this.javaClass.getPackage().name}.I")
+        val iName = curruptName ("${this.javaClass.`package`.name}.I")
 
         val carpenterSchema = amqpSchema.carpenterSchema()
 
@@ -405,12 +406,12 @@ class InheritanceSchemaToClassCarpenterTests : AmqpCarpenterBase() {
 
         val amqpSchema = obj.second.schema.curruptName(listOf(
                 classTestName("A"),
-                "${this.javaClass.getPackage().name}.I",
-                "${this.javaClass.getPackage().name}.II"))
+                "${this.javaClass.`package`.name}.I",
+                "${this.javaClass.`package`.name}.II"))
 
         val aName  = curruptName (classTestName("A"))
-        val iName  = curruptName ("${this.javaClass.getPackage().name}.I")
-        val iiName = curruptName ("${this.javaClass.getPackage().name}.II")
+        val iName  = curruptName ("${this.javaClass.`package`.name}.I")
+        val iiName = curruptName ("${this.javaClass.`package`.name}.II")
 
         val carpenterSchema = amqpSchema.carpenterSchema()
 
@@ -460,12 +461,12 @@ class InheritanceSchemaToClassCarpenterTests : AmqpCarpenterBase() {
 
         val amqpSchema = obj.second.schema.curruptName(listOf(
                 classTestName("A"),
-                "${this.javaClass.getPackage().name}.I",
-                "${this.javaClass.getPackage().name}.III"))
+                "${this.javaClass.`package`.name}.I",
+                "${this.javaClass.`package`.name}.III"))
 
         val aName  = curruptName (classTestName("A"))
-        val iName  = curruptName ("${this.javaClass.getPackage().name}.I")
-        val iiiName = curruptName ("${this.javaClass.getPackage().name}.III")
+        val iName  = curruptName ("${this.javaClass.`package`.name}.I")
+        val iiiName = curruptName ("${this.javaClass.`package`.name}.III")
 
         val carpenterSchema = amqpSchema.carpenterSchema()
 
