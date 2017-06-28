@@ -42,9 +42,6 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.second.schema.types[0] is CompositeType)
         assert(obj.second.schema.types[1] is CompositeType)
 
-        println (obj.second.schema.types[0] as CompositeType)
-        println (obj.second.schema.types[1] as CompositeType)
-
         var amqpSchemaA : CompositeType? = null
         var amqpSchemaB : CompositeType? = null
 
@@ -89,7 +86,6 @@ class CompositeMembers : AmqpCarpenterBase() {
        class in the class path then we must have all of it's constituent elements */
     @Test(expected = UncarpentableException::class)
     fun nestedIsUnknown () {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
 
@@ -110,7 +106,6 @@ class CompositeMembers : AmqpCarpenterBase() {
 
     @Test
     fun ParentIsUnknown () {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
 
@@ -134,7 +129,6 @@ class CompositeMembers : AmqpCarpenterBase() {
 
     @Test
     fun BothUnkown () {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
 
@@ -150,13 +144,10 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.first is B)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
-
-        println (amqpSchema)
     }
 
     @Test
     fun nestedIsUnkownInherited () {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
         val testC = 30
@@ -177,13 +168,10 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.first is C)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
-
-        println (amqpSchema)
     }
 
     @Test
     fun nestedIsUnknownInheritedUnkown () {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
         val testC = 30
@@ -204,13 +192,10 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.first is C)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
-
-        println (amqpSchema)
     }
 
     @Test
     fun parentsIsUnknownWithUnkownInheritedMember () {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
         val testC = 30
@@ -231,8 +216,6 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.first is C)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
-
-        println (amqpSchema)
     }
 
 
@@ -242,7 +225,6 @@ class CompositeMembers : AmqpCarpenterBase() {
      */
     @Test
     fun nestedIsInterfaceToUnknown () {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
 
@@ -256,13 +238,10 @@ class CompositeMembers : AmqpCarpenterBase() {
         val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
 
         assert(obj.first is B)
-
-        println (obj.second.schema)
     }
 
     @Test
     fun nestedIsUnknownInterface() {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
 
@@ -276,13 +255,10 @@ class CompositeMembers : AmqpCarpenterBase() {
         val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
 
         assert(obj.first is B)
-
-        println (obj.second.schema)
     }
 
     @Test
     fun ParentsIsInterfaceToUnkown() {
-        println ("\n----\n")
         val testA = 10
         val testB = 20
 
@@ -296,8 +272,6 @@ class CompositeMembers : AmqpCarpenterBase() {
         val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(b))
 
         assert(obj.first is B)
-
-        println (obj.second.schema)
     }
 }
 
