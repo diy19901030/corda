@@ -93,7 +93,7 @@ class SellerFlow(val otherParty: Party,
 
             // Commit it to local storage.
             val stx = tx.toSignedTransaction(true)
-            serviceHub.recordTransactions(listOf(stx))
+            serviceHub.recordTransactions(stx)
 
             stx
         }
@@ -106,7 +106,7 @@ class SellerFlow(val otherParty: Party,
             val notarySignature = subFlow(NotaryFlow.Client(builder.toSignedTransaction(false)))
             notarySignature.forEach { builder.addSignatureUnchecked(it) }
             val tx = builder.toSignedTransaction(true)
-            serviceHub.recordTransactions(listOf(tx))
+            serviceHub.recordTransactions(tx)
             tx
         }
 

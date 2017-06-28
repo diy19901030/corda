@@ -127,7 +127,7 @@ abstract class AbstractNode(open val configuration: NodeConfiguration,
         override val uploaders: List<FileUploader> get() = this@AbstractNode.uploaders
         override val stateMachineRecordedTransactionMapping: StateMachineRecordedTransactionMappingStorage
             get() = this@AbstractNode.transactionMappings
-        override val validatedTransactions: TransactionStorage get() = this@AbstractNode.transactions
+        override val validatedTransactions: WritableTransactionStorage get() = this@AbstractNode.transactions
         override val networkService: MessagingService get() = network
         override val networkMapCache: NetworkMapCacheInternal get() = netMapCache
         override val vaultService: VaultService get() = vault
@@ -176,7 +176,7 @@ abstract class AbstractNode(open val configuration: NodeConfiguration,
     lateinit var checkpointStorage: CheckpointStorage
     lateinit var smm: StateMachineManager
     lateinit var attachments: NodeAttachmentService
-    lateinit var transactions: TransactionStorage
+    lateinit var transactions: WritableTransactionStorage
     lateinit var transactionMappings: StateMachineRecordedTransactionMappingStorage
     lateinit var uploaders: List<FileUploader>
     lateinit var vault: VaultService
@@ -505,7 +505,7 @@ abstract class AbstractNode(open val configuration: NodeConfiguration,
         return tokenizableServices
     }
 
-    protected open fun createTransactionStorage(): TransactionStorage = DBTransactionStorage()
+    protected open fun createTransactionStorage(): WritableTransactionStorage = DBTransactionStorage()
 
     private fun scanCordapps(): ScanResult? {
         val scanPackage = System.getProperty("net.corda.node.cordapp.scan.package")

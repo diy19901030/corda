@@ -22,7 +22,6 @@ import net.corda.core.messaging.SingleMessageRecipient
 import net.corda.core.messaging.StateMachineTransactionMapping
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.services.ServiceInfo
-import net.corda.core.node.services.TransactionStorage
 import net.corda.core.node.services.Vault
 import net.corda.core.serialization.serialize
 import net.corda.core.transactions.SignedTransaction
@@ -32,6 +31,7 @@ import net.corda.core.utilities.*
 import net.corda.flows.TwoPartyTradeFlow.Buyer
 import net.corda.flows.TwoPartyTradeFlow.Seller
 import net.corda.node.internal.AbstractNode
+import net.corda.node.services.api.WritableTransactionStorage
 import net.corda.node.services.config.NodeConfiguration
 import net.corda.node.services.persistence.DBTransactionStorage
 import net.corda.node.services.persistence.checkpoints
@@ -284,7 +284,7 @@ class TwoPartyTradeFlowTests {
                                 entropyRoot: BigInteger): MockNetwork.MockNode {
                 return object : MockNetwork.MockNode(config, network, networkMapAddr, advertisedServices, id, overrideServices, entropyRoot) {
                     // That constructs a recording tx storage
-                    override fun createTransactionStorage(): TransactionStorage {
+                    override fun createTransactionStorage(): WritableTransactionStorage {
                         return RecordingTransactionStorage(database, super.createTransactionStorage())
                     }
                 }
@@ -675,7 +675,7 @@ class TwoPartyTradeFlowTests {
     }
 
 
-    class RecordingTransactionStorage(val database: Database, val delegate: TransactionStorage) : TransactionStorage {
+    class RecordingTransactionStorage(val database: Database, val delegate: WritableTransactionStorage) : WritableTransactionStorage {
         override fun track(): DataFeed<List<SignedTransaction>, SignedTransaction> {
             return database.transaction {
                 delegate.track()
