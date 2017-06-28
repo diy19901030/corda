@@ -13,6 +13,7 @@ import net.corda.core.getOrThrow
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.startFlow
 import net.corda.core.serialization.OpaqueBytes
+import net.corda.core.utilities.DUMMY_NOTARY
 import net.corda.core.utilities.Emoji
 import net.corda.core.utilities.loggerFor
 import net.corda.flows.IssuerFlow.IssuanceRequester
@@ -46,11 +47,13 @@ class TraderDemoClientApi(val rpc: CordaRPCOps) {
     fun runBuyer(amount: Amount<Currency> = 30000.DOLLARS, anonymous: Boolean = true) {
         val bankOfCordaParty = rpc.partyFromX500Name(BOC.name)
                 ?: throw Exception("Unable to locate ${BOC.name} in Network Map Service")
+        val notaryPary = rpc.partyFromX500Name(DUMMY_NOTARY.name)
+                ?: throw Exception("Unable to locate ${DUMMY_NOTARY.name} in Network Map Service")
         val me = rpc.nodeIdentity()
         val amounts = calculateRandomlySizedAmounts(amount, 3, 10, Random())
         // issuer random amounts of currency totaling 30000.DOLLARS in parallel
         val resultFutures = amounts.map { pennies ->
-            rpc.startFlow(::IssuanceRequester, Amount(pennies, amount.token), me.legalIdentity, OpaqueBytes.of(1), bankOfCordaParty, anonymous).returnValue
+            rpc.startFlow(::IssuanceRequester, Amount(pennies, amount.token), me.legalIdentity, OpaqueBytes.of(1), bankOfCordaParty, notaryPary, anonymous).returnValue
         }
 
         Futures.allAsList(resultFutures).getOrThrow()

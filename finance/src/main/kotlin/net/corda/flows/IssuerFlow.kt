@@ -25,6 +25,7 @@ object IssuerFlow {
     data class IssuanceRequestState(val amount: Amount<Currency>,
                                     val issueToParty: Party,
                                     val issuerPartyRef: OpaqueBytes,
+                                    val notaryParty: Party,
                                     val anonymous: Boolean)
 
     /**
@@ -40,15 +41,17 @@ object IssuerFlow {
                             val issueToParty: Party,
                             val issueToPartyRef: OpaqueBytes,
                             val issuerBankParty: Party,
+                            val notaryParty: Party,
                             val anonymous: Boolean) : FlowLogic<AbstractCashFlow.Result>() {
         @Suspendable
         @Throws(CashException::class)
         override fun call(): AbstractCashFlow.Result {
-            val issueRequest = IssuanceRequestState(amount, issueToParty, issueToPartyRef, anonymous)
-            return sendAndReceive<AbstractCashFlow.Result>(issuerBankParty, issueRequest).unwrap { res ->
-                val tx = res.stx.tx
+            val issueRequest = IssuanceRequestState(amount, issueToParty, issueToPartyRef, notaryParty, anonymous)
+            return sendAndReceive<AbstractCashFlow.Result>(issuerBankParty, issueRequest).unwrap { moveTx ->
+                require(anonymous == false || moveTx.identities.identities.isNotEmpty())
+                val tx = moveTx.stx.tx
                 val recipient = if (anonymous) {
-                    res.identities.forParty(issueToParty).identity
+                    moveTx.identities.forParty(issueToParty).identity
                 } else {
                     issueToParty
                 }
@@ -59,7 +62,7 @@ object IssuerFlow {
                         .filter { state -> state.owner == recipient }
                 require(cashOutputs.size == 1) { "Require a single cash output paying $recipient, found ${tx.outputs}" }
                 require(cashOutputs.single().amount == expectedAmount) { "Require payment of $expectedAmount"}
-                res
+                moveTx
             }
         }
     }
@@ -92,23 +95,23 @@ object IssuerFlow {
                 it
             }
             // TODO: parse request to determine Asset to issue
-            val txn = issueCashTo(issueRequest.amount, issueRequest.issueToParty, issueRequest.issuerPartyRef, issueRequest.anonymous)
+            val moveTx = issueCashTo(issueRequest.amount, issueRequest.issueToParty, issueRequest.issuerPartyRef, issueRequest.notaryParty, issueRequest.anonymous)
+            require(issueRequest.anonymous == false || moveTx.identities.identities.isNotEmpty())
             progressTracker.currentStep = SENDING_CONFIRM
-            send(otherParty, txn)
-            return txn.stx
+            send(otherParty, moveTx)
+            return moveTx.stx
         }
 
         @Suspendable
         private fun issueCashTo(amount: Amount<Currency>,
                                 issueTo: Party,
                                 issuerPartyRef: OpaqueBytes,
+                                notaryParty: Party,
                                 anonymous: Boolean): AbstractCashFlow.Result {
-            // TODO: pass notary in as request parameter
-            val notaryParty = serviceHub.networkMapCache.notaryNodes[0].notaryIdentity
             // invoke Cash subflow to issue Asset
             progressTracker.currentStep = ISSUING
             val issueRecipient = serviceHub.myInfo.legalIdentity
-            val issueCashFlow = CashIssueFlow(amount, issuerPartyRef, issueRecipient, notaryParty, anonymous = false)
+            val issueCashFlow = CashIssueFlow(amount, issuerPartyRef, issueRecipient, notaryParty, anonymous)
             val issueTx = subFlow(issueCashFlow)
             // NOTE: issueCashFlow performs a Broadcast (which stores a local copy of the txn to the ledger)
             // short-circuit when issuing to self
@@ -117,7 +120,8 @@ object IssuerFlow {
             // now invoke Cash subflow to Move issued assetType to issue requester
             progressTracker.currentStep = TRANSFERRING
             val moveCashFlow = CashPaymentFlow(amount, issueTo, anonymous)
-            val moveTx = subFlow(moveCashFlow)
+            val moveTx: AbstractCashFlow.Result = subFlow(moveCashFlow)
+            require(anonymous == false || moveTx.identities.identities.isNotEmpty())
             // NOTE: CashFlow PayCash calls FinalityFlow which performs a Broadcast (which stores a local copy of the txn to the ledger)
             return moveTx
         }

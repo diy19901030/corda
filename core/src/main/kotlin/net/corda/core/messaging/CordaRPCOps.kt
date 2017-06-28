@@ -360,6 +360,17 @@ inline fun <T : Any, A, B, C, D, E, reified R : FlowLogic<T>> CordaRPCOps.startF
         arg4: E
 ): FlowHandle<T> = startFlowDynamic(R::class.java, arg0, arg1, arg2, arg3, arg4)
 
+inline fun <T : Any, A, B, C, D, E, F, reified R : FlowLogic<T>> CordaRPCOps.startFlow(
+        @Suppress("UNUSED_PARAMETER")
+        flowConstructor: (A, B, C, D, E, F) -> R,
+        arg0: A,
+        arg1: B,
+        arg2: C,
+        arg3: D,
+        arg4: E,
+        arg5: F
+): FlowHandle<T> = startFlowDynamic(R::class.java, arg0, arg1, arg2, arg3, arg4, arg5)
+
 /**
  * Same again, except this time with progress-tracking enabled.
  */
