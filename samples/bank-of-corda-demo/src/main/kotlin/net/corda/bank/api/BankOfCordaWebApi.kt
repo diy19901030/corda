@@ -10,6 +10,8 @@ import net.corda.core.serialization.OpaqueBytes
 import net.corda.core.utilities.loggerFor
 import net.corda.flows.IssuerFlow.IssuanceRequester
 import org.bouncycastle.asn1.x500.X500Name
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.time.LocalDateTime
 import javax.ws.rs.*
 import javax.ws.rs.core.MediaType
@@ -44,11 +46,11 @@ class BankOfCordaWebApi(val rpc: CordaRPCOps) {
     fun issueAssetRequest(params: IssueRequestParams): Response {
         // Resolve parties via RPC
         val issueToParty = rpc.partyFromX500Name(params.issueToPartyName)
-                ?: throw Exception("Unable to locate ${params.issueToPartyName} in Network Map Service")
+                ?: return Response.status(Response.Status.FORBIDDEN).entity("Unable to locate ${params.issueToPartyName} in Network Map Service").build()
         val issuerBankParty = rpc.partyFromX500Name(params.issuerBankName)
-                ?: throw Exception("Unable to locate ${params.issuerBankName} in Network Map Service")
+                ?: return Response.status(Response.Status.FORBIDDEN).entity("Unable to locate ${params.issuerBankName} in Network Map Service").build()
         val notaryParty = rpc.partyFromX500Name(params.notaryName)
-                ?: throw Exception("Unable to locate ${params.notaryName} in Network Map Service")
+                ?: return Response.status(Response.Status.FORBIDDEN).entity("Unable to locate ${params.notaryName} in Network Map Service").build()
 
         val amount = Amount(params.amount, currency(params.currency))
         val issuerToPartyRef = OpaqueBytes.of(params.issueToPartyRefAsString.toByte())
@@ -56,13 +58,15 @@ class BankOfCordaWebApi(val rpc: CordaRPCOps) {
 
         // invoke client side of Issuer Flow: IssuanceRequester
         // The line below blocks and waits for the future to resolve.
-        val status = try {
+        return try {
             rpc.startFlow(::IssuanceRequester, amount, issueToParty, issuerToPartyRef, issuerBankParty, notaryParty, anonymous).returnValue.getOrThrow()
             logger.info("Issue request completed successfully: $params")
-            Response.Status.CREATED
-        } catch (e: FlowException) {
-            Response.Status.BAD_REQUEST
+            Response.status(Response.Status.CREATED).build()
+        } catch (e: Exception) {
+            val out = StringWriter()
+            e.printStackTrace(PrintWriter(out))
+            logger.error("Issue request failed: ${e}")
+            Response.status(Response.Status.FORBIDDEN).entity(out.toString()).build()
         }
-        return Response.status(status).build()
     }
 }
