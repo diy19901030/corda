@@ -174,7 +174,7 @@ class CompositeMembers : AmqpCarpenterBase() {
 
         val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(c))
 
-        assert(obj.first is B)
+        assert(obj.first is C)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
 
@@ -201,7 +201,7 @@ class CompositeMembers : AmqpCarpenterBase() {
 
         val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(c))
 
-        assert(obj.first is B)
+        assert(obj.first is C)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
 
@@ -228,7 +228,7 @@ class CompositeMembers : AmqpCarpenterBase() {
 
         val obj = DeserializationInput(factory).deserializeRtnEnvelope(serialise(c))
 
-        assert(obj.first is B)
+        assert(obj.first is C)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
 
