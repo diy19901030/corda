@@ -47,6 +47,7 @@ class BankOfCordaRPCClientTest {
                     nodeBigCorporation.nodeInfo.legalIdentity,
                     BIG_CORP_PARTY_REF,
                     nodeBankOfCorda.nodeInfo.legalIdentity,
+                    nodeBankOfCorda.nodeInfo.notaryIdentity,
                     anonymous).returnValue.getOrThrow()
 
             // Check Bank of Corda Vault Updates
