@@ -3,7 +3,7 @@ package net.corda.core.serialization.carpenter
 import org.objectweb.asm.Type
 import java.util.LinkedHashMap
 
-open class Schema(
+abstract class Schema(
         val name: String,
         fields: Map<String, Class<out Any?>>,
         val superclass: Schema? = null,
@@ -32,3 +32,15 @@ class InterfaceSchema(
     superclass: Schema? = null,
     interfaces: List<Class<*>> = emptyList()
 ) : Schema (name, fields, superclass, interfaces)
+
+object CarpenterSchemaFactory {
+    fun newInstance (
+            name: String,
+            fields: Map<String, Class<out Any?>>,
+            superclass: Schema? = null,
+            interfaces: List<Class<*>> = emptyList(),
+            isInterface: Boolean = false
+    ) : Schema =
+            if (isInterface) InterfaceSchema (name, fields, superclass, interfaces)
+            else ClassSchema (name, fields, superclass, interfaces)
+}
