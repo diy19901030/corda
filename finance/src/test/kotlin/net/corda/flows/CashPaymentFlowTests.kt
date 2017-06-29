@@ -32,7 +32,7 @@ class CashPaymentFlowTests {
         notary = notaryNode.info.notaryIdentity
         bankOfCorda = bankOfCordaNode.info.legalIdentity
 
-        notaryNode.registerInitiatedFlow(TxKeyFlow.Provider::class.java)
+        notaryNode.registerInitiatedFlow(TransactionKeyFlow.Provider::class.java)
         notaryNode.identity.registerIdentity(bankOfCordaNode.info.legalIdentityAndCert)
         bankOfCordaNode.identity.registerIdentity(notaryNode.info.legalIdentityAndCert)
         val future = bankOfCordaNode.services.startFlow(CashIssueFlow(initialBalance, ref,
