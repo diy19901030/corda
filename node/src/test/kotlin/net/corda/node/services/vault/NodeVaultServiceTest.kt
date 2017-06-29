@@ -33,6 +33,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NodeVaultServiceTest {
     lateinit var services: MockServices
@@ -428,5 +429,16 @@ class NodeVaultServiceTest {
             vaultSvc.addNoteToTransaction(anotherTX.id, "GPB Sample Note 1")
             assertEquals(1, vaultSvc.getTransactionNotes(anotherTX.id).count())
         }
+    }
+
+    @Test
+    fun `is ownable state relevant`() {
+        val amount = Amount(1000, Issued(BOC.ref(1), GBP))
+        val wellKnownCash = Cash.State(amount, services.myInfo.legalIdentity)
+        assertTrue { NodeVaultService.isRelevant(wellKnownCash, services.keyManagementService.keys) }
+
+        val anonymousIdentity = services.keyManagementService.freshKeyAndCert(services.myInfo.legalIdentityAndCert, false)
+        val anonymousCash = Cash.State(amount, anonymousIdentity.identity)
+        assertTrue { NodeVaultService.isRelevant(anonymousCash, services.keyManagementService.keys) }
     }
 }

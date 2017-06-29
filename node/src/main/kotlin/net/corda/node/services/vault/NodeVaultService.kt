@@ -2,6 +2,7 @@ package net.corda.node.services.vault
 
 import co.paralleluniverse.fibers.Suspendable
 import co.paralleluniverse.strands.Strand
+import com.google.common.annotations.VisibleForTesting
 import io.requery.PersistenceException
 import io.requery.TransactionIsolation
 import io.requery.kotlin.`in`
@@ -53,12 +54,18 @@ import kotlin.concurrent.withLock
  * TODO: have transaction storage do some caching.
  */
 class NodeVaultService(private val services: ServiceHub, dataSourceProperties: Properties) : SingletonSerializeAsToken(), VaultService {
-
-    private companion object {
+    internal companion object {
         val log = loggerFor<NodeVaultService>()
 
+        @VisibleForTesting
+        internal fun isRelevant(state: ContractState, ourKeys: Set<PublicKey>) = when (state) {
+            is OwnableState -> state.owner.owningKey.containsAny(ourKeys)
+            is LinearState -> state.isRelevant(ourKeys)
+            else -> ourKeys.intersect(state.participants.map { it.owningKey }).isNotEmpty()
+        }
+
         // Define composite primary key used in Requery Expression
-        val stateRefCompositeColumn: RowExpression = RowExpression.of(listOf(VaultStatesEntity.TX_ID, VaultStatesEntity.INDEX))
+        private val stateRefCompositeColumn: RowExpression = RowExpression.of(listOf(VaultStatesEntity.TX_ID, VaultStatesEntity.INDEX))
     }
 
     val configuration = RequeryConfiguration(dataSourceProperties)
@@ -504,12 +511,6 @@ class NodeVaultService(private val services: ServiceHub, dataSourceProperties: P
 
     override fun deauthoriseContractUpgrade(stateAndRef: StateAndRef<*>) {
         authorisedUpgrade.remove(stateAndRef.ref)
-    }
-
-    private fun isRelevant(state: ContractState, ourKeys: Set<PublicKey>) = when (state) {
-        is OwnableState -> state.owner.owningKey.containsAny(ourKeys)
-        is LinearState -> state.isRelevant(ourKeys)
-        else -> ourKeys.intersect(state.participants.map { it.owningKey }).isNotEmpty()
     }
 
     /**
