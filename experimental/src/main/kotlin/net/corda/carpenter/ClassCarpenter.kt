@@ -61,7 +61,6 @@ interface SimpleFieldAccess {
  * Equals/hashCode methods are not yet supported.
  */
 class ClassCarpenter {
-    // TODO: Array types.
     // TODO: Generics.
     // TODO: Sandbox the generated code when a security manager is in use.
     // TODO: Generate equals/hashCode.
@@ -71,7 +70,12 @@ class ClassCarpenter {
     /**
      * A Schema represents a desired class.
      */
-    open class Schema(val name: String, fields: Map<String, Class<out Any?>>, val superclass: Schema? = null, val interfaces: List<Class<*>> = emptyList()) {
+
+    abstract class Schema(
+            val name: String,
+            fields: Map<String, Class<out Any?>>,
+            val superclass: Schema? = null,
+            val interfaces: List<Class<*>> = emptyList()) {
         val fields = LinkedHashMap(fields)  // Fix the order up front if the user didn't.
         val descriptors = fields.map { it.key to Type.getDescriptor(it.value) }.toMap()
 
@@ -276,11 +280,23 @@ class ClassCarpenter {
                 val superDesc = schema.superclass.descriptorsIncludingSuperclasses().values.joinToString("")
                 visitMethodInsn(INVOKESPECIAL, schema.superclass.name.jvm, "<init>", "($superDesc)V", false)
             }
+
             // Assign the fields from parameters.
             var slot = 1 + superclassFields.size
+
+            var param_idx = 0
             for ((name, type) in schema.fields.entries) {
-                if (type.isArray)
-                    throw UnsupportedOperationException("Array types are not implemented yet")
+                param_idx++
+
+                if (type.isArray) {
+                    visitVarInsn(ALOAD, param_idx)
+                    visitLdcInsn(name)
+                    visitMethodInsn(INVOKESTATIC,
+                            "kotlin/jvm/internal/Intrinsics",
+                            "checkParameterIsNotNull",
+                            "(Ljava/lang/Object;Ljava/lang/String;)V", false);
+                }
+
                 visitVarInsn(ALOAD, 0)  // Load 'this' onto the stack
                 slot += load(slot, type)  // Load the contents of the parameter onto the stack.
                 visitFieldInsn(PUTFIELD, schema.jvmName, name, schema.descriptors[name])

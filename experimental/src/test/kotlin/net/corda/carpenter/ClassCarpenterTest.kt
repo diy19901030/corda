@@ -30,16 +30,17 @@ class ClassCarpenterTest {
 
     @Test
     fun prims() {
-        val clazz = cc.build(ClassCarpenter.ClassSchema("gen.Prims", mapOf(
-                "anIntField" to Int::class.javaPrimitiveType!!,
-                "aLongField" to Long::class.javaPrimitiveType!!,
-                "someCharField" to Char::class.javaPrimitiveType!!,
-                "aShortField" to Short::class.javaPrimitiveType!!,
-                "doubleTrouble" to Double::class.javaPrimitiveType!!,
-                "floatMyBoat" to Float::class.javaPrimitiveType!!,
-                "byteMe" to Byte::class.javaPrimitiveType!!,
-                "booleanField" to Boolean::class.javaPrimitiveType!!
-        )))
+        val clazz = cc.build(ClassCarpenter.ClassSchema(
+                "gen.Prims",
+                mapOf(
+                        "anIntField" to Int::class.javaPrimitiveType!!,
+                        "aLongField" to Long::class.javaPrimitiveType!!,
+                        "someCharField" to Char::class.javaPrimitiveType!!,
+                        "aShortField" to Short::class.javaPrimitiveType!!,
+                        "doubleTrouble" to Double::class.javaPrimitiveType!!,
+                        "floatMyBoat" to Float::class.javaPrimitiveType!!,
+                        "byteMe" to Byte::class.javaPrimitiveType!!,
+                        "booleanField" to Boolean::class.javaPrimitiveType!!)))
         assertEquals(8, clazz.nonSyntheticFields.size)
         assertEquals(10, clazz.nonSyntheticMethods.size)
         assertEquals(8, clazz.declaredConstructors[0].parameterCount)
@@ -116,7 +117,10 @@ class ClassCarpenterTest {
     @Test
     fun interfaces() {
         val schema1 = ClassCarpenter.ClassSchema("gen.A", mapOf("a" to String::class.java))
-        val schema2 = ClassCarpenter.ClassSchema("gen.B", mapOf("b" to Int::class.java), schema1, interfaces = listOf(DummyInterface::class.java))
+        val schema2 = ClassCarpenter.ClassSchema("gen.B",
+                mapOf("b" to Int::class.java),
+                schema1,
+                interfaces = listOf(DummyInterface::class.java))
         val clazz = cc.build(schema2)
         val i = clazz.constructors[0].newInstance("xa", 1) as DummyInterface
         assertEquals("xa", i.a)
@@ -126,7 +130,8 @@ class ClassCarpenterTest {
     @Test(expected = ClassCarpenter.InterfaceMismatch::class)
     fun `mismatched interface`() {
         val schema1 = ClassCarpenter.ClassSchema("gen.A", mapOf("a" to String::class.java))
-        val schema2 = ClassCarpenter.ClassSchema("gen.B", mapOf("c" to Int::class.java), schema1, interfaces = listOf(DummyInterface::class.java))
+        val schema2 = ClassCarpenter.ClassSchema("gen.B", mapOf("c" to Int::class.java), schema1,
+                interfaces = listOf(DummyInterface::class.java))
         val clazz = cc.build(schema2)
         val i = clazz.constructors[0].newInstance("xa", 1) as DummyInterface
         assertEquals(1, i.b)
@@ -142,7 +147,8 @@ class ClassCarpenterTest {
         assertEquals(iface.declaredMethods.size, 1)
         assertEquals(iface.declaredMethods[0].name, "getA")
 
-        val schema2 = ClassCarpenter.ClassSchema("gen.Derived", mapOf("a" to Int::class.java), interfaces = listOf(iface))
+        val schema2 = ClassCarpenter.ClassSchema("gen.Derived", mapOf("a" to Int::class.java),
+                interfaces = listOf(iface))
         val clazz = cc.build(schema2)
         val testA = 42
         val i = clazz.constructors[0].newInstance(testA) as SimpleFieldAccess
@@ -152,8 +158,10 @@ class ClassCarpenterTest {
 
     @Test
     fun `generate multiple interfaces`() {
-        val iFace1 = ClassCarpenter.InterfaceSchema("gen.Interface1", mapOf("a" to Int::class.java, "b" to String::class.java))
-        val iFace2 = ClassCarpenter.InterfaceSchema("gen.Interface2", mapOf("c" to Int::class.java, "d" to String::class.java))
+        val iFace1 = ClassCarpenter.InterfaceSchema("gen.Interface1",
+                mapOf("a" to Int::class.java, "b" to String::class.java))
+        val iFace2 = ClassCarpenter.InterfaceSchema("gen.Interface2",
+                mapOf("c" to Int::class.java, "d" to String::class.java))
 
         val class1 = ClassCarpenter.ClassSchema(
                 "gen.Derived",
@@ -212,5 +220,129 @@ class ClassCarpenterTest {
         assertEquals(testB, i["b"])
         assertEquals(testC, i["c"])
         assertEquals(testD, i["d"])
+    }
+
+    @Test
+    fun `int array`() {
+        val className = "iEnjoyPotato"
+        val schema = ClassCarpenter.ClassSchema(
+                "gen.$className",
+                mapOf("a" to Array<Int>::class.java))
+
+        val clazz = cc.build(schema)
+
+        val i = clazz.constructors[0].newInstance(arrayOf(1, 2, 3)) as SimpleFieldAccess
+
+        val arr = clazz.getMethod("getA").invoke(i)
+
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(1, (arr as Array<Int>)[0])
+        assertEquals(2, arr[1])
+        assertEquals(3, arr[2])
+        assertEquals("$className{a=[1, 2, 3]}", i.toString())
+    }
+
+    @Test
+    fun `int array with ints`() {
+        val className = "iEnjoyCrumble"
+        val schema = ClassCarpenter.ClassSchema(
+                "gen.$className", mapOf(
+                "a" to Int::class.java,
+                "b" to Array<Int>::class.java,
+                "c" to Int::class.java))
+
+        val clazz = cc.build(schema)
+
+        val i = clazz.constructors[0].newInstance(2, arrayOf(4, 8), 16) as SimpleFieldAccess
+
+        assertEquals(2, clazz.getMethod("getA").invoke(i))
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(4, (clazz.getMethod("getB").invoke(i) as Array<Int>)[0])
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(8, (clazz.getMethod("getB").invoke(i) as Array<Int>)[1])
+        assertEquals(16, clazz.getMethod("getC").invoke(i))
+
+        assertEquals("$className{a=2, b=[4, 8], c=16}", i.toString())
+    }
+
+    @Test
+    fun `multiple int arrays`() {
+        val className = "iEnjoyJam"
+        val schema = ClassCarpenter.ClassSchema(
+                "gen.$className", mapOf(
+                "a" to Array<Int>::class.java,
+                "b" to Int::class.java,
+                "c" to Array<Int>::class.java))
+
+        val clazz = cc.build(schema)
+
+        val i = clazz.constructors[0].newInstance(arrayOf(1, 2), 3, arrayOf(4, 5, 6)) as SimpleFieldAccess
+
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(1, (clazz.getMethod("getA").invoke(i) as Array<Int>)[0])
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(2, (clazz.getMethod("getA").invoke(i) as Array<Int>)[1])
+
+        assertEquals(3, clazz.getMethod("getB").invoke(i))
+
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(4, (clazz.getMethod("getC").invoke(i) as Array<Int>)[0])
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(5, (clazz.getMethod("getC").invoke(i) as Array<Int>)[1])
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(6, (clazz.getMethod("getC").invoke(i) as Array<Int>)[2])
+
+        assertEquals("$className{a=[1, 2], b=3, c=[4, 5, 6]}", i.toString())
+    }
+
+    @Test
+    fun `string array`() {
+        val className = "iEnjoyToast"
+        val schema = ClassCarpenter.ClassSchema(
+                "gen.$className",
+                mapOf("a" to Array<String>::class.java))
+
+        val clazz = cc.build(schema)
+
+        val i = clazz.constructors[0].newInstance(arrayOf("toast", "butter", "jam")) as SimpleFieldAccess
+
+
+        @Suppress("UNCHECKED_CAST")
+        val arr = clazz.getMethod("getA").invoke(i) as Array<String>
+
+        assertEquals("toast", arr[0])
+        assertEquals("butter", arr[1])
+        assertEquals("jam", arr[2])
+    }
+
+    @Test
+    fun `string arrays`() {
+        val className = "iEnjoyToast"
+        val schema = ClassCarpenter.ClassSchema(
+                "gen.$className",
+                mapOf(
+                        "a" to Array<String>::class.java,
+                        "b" to String::class.java,
+                        "c" to Array<String>::class.java))
+
+        val clazz = cc.build(schema)
+
+        val i = clazz.constructors[0].newInstance(
+                arrayOf("bread", "spread", "cheese"),
+                "and on the side",
+                arrayOf("some pickles", "some fries")) as SimpleFieldAccess
+
+
+        @Suppress("UNCHECKED_CAST")
+        val arr1 = clazz.getMethod("getA").invoke(i) as Array<String>
+        @Suppress("UNCHECKED_CAST")
+        val arr2 = clazz.getMethod("getC").invoke(i) as Array<String>
+
+        assertEquals("bread", arr1[0])
+        assertEquals("spread", arr1[1])
+        assertEquals("cheese", arr1[2])
+        assertEquals("and on the side", clazz.getMethod("getB").invoke(i))
+        assertEquals("some pickles", arr2[0])
+        assertEquals("some fries", arr2[1])
     }
 }
