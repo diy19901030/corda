@@ -6,6 +6,8 @@ import net.corda.core.serialization.amqp.*
 import org.junit.Test
 import kotlin.test.assertEquals
 import net.corda.carpenter.test.*
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @CordaSerializable
 interface I_ {
@@ -14,8 +16,6 @@ interface I_ {
 
 /*
  * Where a class has a member that is also a composite type or interface
- *
- * TODO - make this all not terrible as I'm not sure it's testing anything
  */
 class CompositeMembers : AmqpCarpenterBase() {
 
@@ -57,30 +57,26 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert (amqpSchemaA != null)
         assert (amqpSchemaB != null)
 
+        /*
+         * Just ensure the amqp schema matches what we want before we go messing
+         * around with the internals
+         */
         assertEquals(1,     amqpSchemaA?.fields?.size)
         assertEquals("a",   amqpSchemaA!!.fields[0].name)
         assertEquals("int", amqpSchemaA.fields[0].type)
 
         assertEquals(2,     amqpSchemaB?.fields?.size)
         assertEquals("a",   amqpSchemaB!!.fields[0].name)
-//        assertEquals("${this.javaClass.name}\$${this.javaClass.enclosingMethod.name}\$A", amqpSchemaB!!.fields[0].type)
+        assertEquals(classTestName("A"), amqpSchemaB.fields[0].type)
         assertEquals("b",   amqpSchemaB.fields[1].name)
         assertEquals("int", amqpSchemaB.fields[1].type)
 
-//        var ccA = ClassCarpenter().build(amqpSchemaA.carpenterSchema())
-//        var ccB = ClassCarpenter().build(amqpSchemaB.carpenterSchema())
+        val metaSchema = obj.second.schema.carpenterSchema()
 
-        /*
-         * Since A is known to the JVM we can't constuct B with and instance of the carpented A but
-         * need to use the defined one above
-         */
-//        val instanceA = ccA.constructors[0].newInstance(testA)
-//        val instanceB = ccB.constructors[0].newInstance(A (testA), testB)
-
-//        assertEquals (ccA.getMethod("getA").invoke(instanceA), amqpObj.a.a)
-//        assertEquals ((ccB.getMethod("getA").invoke(instanceB) as A).a, amqpObj.a.a)
-//        assertEquals (ccB.getMethod("getB").invoke(instanceB), amqpObj.b)
-
+        /* if we know all the classes there is nothing to really achieve here */
+        assert (metaSchema.carpenterSchemas.isEmpty())
+        assert (metaSchema.dependsOn.isEmpty())
+        assert (metaSchema.dependencies.isEmpty())
     }
 
     /* you cannot have an element of a composite class we know about
@@ -127,6 +123,12 @@ class CompositeMembers : AmqpCarpenterBase() {
         val carpenterSchema = amqpSchema.carpenterSchema()
 
         assertEquals (1, carpenterSchema.size)
+
+        val metaCarpenter = MetaCarpenter (carpenterSchema)
+
+        metaCarpenter.build()
+
+        assert (curruptName(classTestName("B")) in metaCarpenter.objects)
     }
 
     @Test
@@ -146,9 +148,46 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.first is B)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
+
+        val carpenterSchema = amqpSchema.carpenterSchema()
+
+        /* just verify we're in the expected initial state, A is carpentable, B is not because
+           it depends on A and the dependency chains are in place */
+        assertEquals (1, carpenterSchema.size)
+        assertEquals (curruptName(classTestName("A")), carpenterSchema.carpenterSchemas.first().name)
+        assertEquals (1, carpenterSchema.dependencies.size)
+        assert (curruptName(classTestName("B")) in carpenterSchema.dependencies)
+        assertEquals (1, carpenterSchema.dependsOn.size)
+        assert (curruptName(classTestName("A")) in carpenterSchema.dependsOn)
+
+        /* test meta carpenter lets us single step over the creation */
+        val metaCarpenter = TestMetaCarpenter (carpenterSchema)
+
+        /* we've built nothing so nothing should be there */
+        assertEquals (0, metaCarpenter.objects.size)
+
+        /* first iteration, carpent A, resolve deps and mark B as carpentable */
+        metaCarpenter.build()
+
+        /* one build iteration should have carpetned up A and worked out that B is now buildable
+           given it's depedencies have been satisfied */
+        assertTrue (curruptName(classTestName("A")) in metaCarpenter.objects)
+        assertFalse (curruptName(classTestName("B")) in metaCarpenter.objects)
+
+        assertEquals (1, carpenterSchema.carpenterSchemas.size)
+        assertEquals (curruptName(classTestName("B")), carpenterSchema.carpenterSchemas.first().name)
+        assertTrue (carpenterSchema.dependencies.isEmpty())
+        assertTrue (carpenterSchema.dependsOn.isEmpty())
+
+        /* second manual iteration, will carpent B */
+        metaCarpenter.build()
+        assert (curruptName(classTestName("A")) in metaCarpenter.objects)
+        assert (curruptName(classTestName("B")) in metaCarpenter.objects)
+
+        assertTrue (carpenterSchema.carpenterSchemas.isEmpty())
     }
 
-    @Test
+    @Test(expected = UncarpentableException::class)
     fun nestedIsUnkownInherited () {
         val testA = 10
         val testB = 20
@@ -170,9 +209,11 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.first is C)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
+
+        amqpSchema.carpenterSchema()
     }
 
-    @Test
+    @Test(expected = UncarpentableException::class)
     fun nestedIsUnknownInheritedUnkown () {
         val testA = 10
         val testB = 20
@@ -194,6 +235,8 @@ class CompositeMembers : AmqpCarpenterBase() {
         assert(obj.first is C)
 
         val amqpSchema = obj.second.schema.curruptName(listOf (classTestName ("A"), classTestName ("B")))
+
+        amqpSchema.carpenterSchema()
     }
 
     @Test
