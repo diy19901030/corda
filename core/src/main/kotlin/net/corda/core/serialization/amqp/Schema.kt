@@ -230,6 +230,8 @@ data class Field(var name: String, val type: String, val requires: List<String>,
         "*"       -> if (classLoaders.exists(requires[0])) requires[0] else null
         else      -> if (classLoaders.exists (type)) type else null
     }
+
+    fun typeAsString() = if (type =="*") requires[0] else type
 }
 
 sealed class TypeNotation : DescribedType {
@@ -346,7 +348,7 @@ data class CompositeType(override var name: String, override val label: String?,
                 m[it.name] =  it.getTypeAsClass(classLoaders)
             }
             catch (e: ClassNotFoundException) {
-                carpenterSchemas.addDepPair(this, name, it.name)
+                carpenterSchemas.addDepPair(this, name, it.typeAsString())
 
                 isCreatable = false
             }
