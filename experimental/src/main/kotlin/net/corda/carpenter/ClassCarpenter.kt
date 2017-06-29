@@ -75,7 +75,8 @@ class ClassCarpenter {
             val name: String,
             fields: Map<String, Class<out Any?>>,
             val superclass: Schema? = null,
-            val interfaces: List<Class<*>> = emptyList()) {
+            val interfaces: List<Class<*>> = emptyList())
+    {
         val fields = LinkedHashMap(fields)  // Fix the order up front if the user didn't.
         val descriptors = fields.map { it.key to Type.getDescriptor(it.value) }.toMap()
 
