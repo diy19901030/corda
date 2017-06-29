@@ -4,13 +4,16 @@ import net.corda.contracts.asset.Cash
 import net.corda.contracts.asset.DUMMY_CASH_ISSUER
 import net.corda.contracts.testing.fillWithSomeTestCash
 import net.corda.core.contracts.*
+import net.corda.core.crypto.generateKeyPair
 import net.corda.core.identity.AnonymousParty
 import net.corda.core.node.services.StatesNotAvailableException
 import net.corda.core.node.services.TxWritableStorageService
 import net.corda.core.node.services.VaultService
 import net.corda.core.node.services.unconsumedStates
+import net.corda.core.random63BitValue
 import net.corda.core.serialization.OpaqueBytes
 import net.corda.core.transactions.SignedTransaction
+import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.DUMMY_NOTARY
 import net.corda.core.utilities.LogHelper
 import net.corda.node.utilities.configureDatabase
@@ -32,6 +35,7 @@ import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -426,7 +430,7 @@ class NodeVaultServiceTest {
 
             services.recordTransactions(listOf(anotherTX))
 
-            vaultSvc.addNoteToTransaction(anotherTX.id, "GPB Sample Note 1")
+            vaultSvc.addNoteToTransaction(anotherTX.id, "GBP Sample Note 1")
             assertEquals(1, vaultSvc.getTransactionNotes(anotherTX.id).count())
         }
     }
@@ -440,5 +444,29 @@ class NodeVaultServiceTest {
         val anonymousIdentity = services.keyManagementService.freshKeyAndCert(services.myInfo.legalIdentityAndCert, false)
         val anonymousCash = Cash.State(amount, anonymousIdentity.identity)
         assertTrue { NodeVaultService.isRelevant(anonymousCash, services.keyManagementService.keys) }
+
+        val thirdPartyIdentity = AnonymousParty(generateKeyPair().public)
+        val thirdPartyCash = Cash.State(amount, thirdPartyIdentity)
+        assertFalse { NodeVaultService.isRelevant(thirdPartyCash, services.keyManagementService.keys) }
+    }
+
+    // TODO: Unit test the other state types
+
+    @Test
+    fun `determine our new states from tx`() {
+        val builder = TransactionBuilder(TransactionType.General, services.myInfo.legalIdentity)
+        val amount = Amount(1000, Issued(BOC.ref(1), GBP))
+        val anonymousIdentity = services.keyManagementService.freshKeyAndCert(services.myInfo.legalIdentityAndCert, false)
+        val thirdPartyIdentity = AnonymousParty(generateKeyPair().public)
+
+        // Assemble a cash transaction and ensure that our output is correctly identified as ours
+        val ourCash = Cash.State(amount, anonymousIdentity.identity)
+        val theirCash = Cash.State(amount, thirdPartyIdentity)
+        builder.addOutputState(ourCash)
+        builder.addOutputState(theirCash)
+        builder.addCommand(Cash.Commands.Issue(random63BitValue()), anonymousIdentity.identity.owningKey)
+        val tx = builder.toWireTransaction()
+        val ourNewStates = NodeVaultService.ourStates(tx, services.keyManagementService.keys)
+        assertEquals(listOf(ourCash), ourNewStates.map { it.state.data })
     }
 }

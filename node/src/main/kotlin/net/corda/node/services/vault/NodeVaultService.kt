@@ -64,6 +64,12 @@ class NodeVaultService(private val services: ServiceHub, dataSourceProperties: P
             else -> ourKeys.intersect(state.participants.map { it.owningKey }).isNotEmpty()
         }
 
+        internal fun ourStates(tx: WireTransaction, ourKeys: Set<PublicKey>): List<StateAndRef<ContractState>> {
+            return tx.outputs.
+                    filter { isRelevant(it.data, ourKeys) }.
+                    map { tx.outRef<ContractState>(it.data) }
+        }
+
         // Define composite primary key used in Requery Expression
         private val stateRefCompositeColumn: RowExpression = RowExpression.of(listOf(VaultStatesEntity.TX_ID, VaultStatesEntity.INDEX))
     }
@@ -467,9 +473,7 @@ class NodeVaultService(private val services: ServiceHub, dataSourceProperties: P
             = txState.copy(data = txState.data.copy(amount = amount, owner = owner))
 
     private fun makeUpdate(tx: WireTransaction, ourKeys: Set<PublicKey>): Vault.Update {
-        val ourNewStates = tx.outputs.
-                filter { isRelevant(it.data, ourKeys) }.
-                map { tx.outRef<ContractState>(it.data) }
+        val ourNewStates = ourStates(tx, ourKeys)
 
         // Retrieve all unconsumed states for this transaction's inputs
         val consumedStates = HashSet<StateAndRef<ContractState>>()
