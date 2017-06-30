@@ -269,6 +269,22 @@ class ClassCarpenter {
     private fun ClassWriter.generateConstructor(schema: Schema) {
         with(visitMethod(ACC_PUBLIC, "<init>", "(" + schema.descriptorsIncludingSuperclasses().values.joinToString("") + ")V", null, null)) {
             visitCode()
+
+
+            for ((name, type) in schema.fields.entries) {
+                if (type.isArray) {
+                    /* assert we're not being passed a null object, this means we'll throw an illegal
+                       argument exception if we're given a null rather than a Type Cast exception */
+                    visitVarInsn(ALOAD, 1)
+                    visitLdcInsn(name)
+                    visitMethodInsn(INVOKESTATIC,
+                            "kotlin/jvm/internal/Intrinsics",
+                            "checkParameterIsNotNull",
+                            "(Ljava/lang/Object;Ljava/lang/String;)V", false)
+
+                }
+            }
+
             // Calculate the super call.
             val superclassFields = schema.superclass?.fieldsIncludingSuperclasses() ?: emptyMap()
             visitVarInsn(ALOAD, 0)
@@ -285,19 +301,18 @@ class ClassCarpenter {
             // Assign the fields from parameters.
             var slot = 1 + superclassFields.size
 
-            var param_idx = 0
             for ((name, type) in schema.fields.entries) {
-                param_idx++
-
                 if (type.isArray) {
-                    visitVarInsn(ALOAD, param_idx)
+                    /* assert we're not being passed a null object, this means we'll throw an illegal
+                       argument exception if we're given a null rather than a Type Cast exception */
+                    visitVarInsn(ALOAD, slot)
                     visitLdcInsn(name)
                     visitMethodInsn(INVOKESTATIC,
                             "kotlin/jvm/internal/Intrinsics",
                             "checkParameterIsNotNull",
-                            "(Ljava/lang/Object;Ljava/lang/String;)V", false);
-                }
+                            "(Ljava/lang/Object;Ljava/lang/String;)V", false)
 
+                }
                 visitVarInsn(ALOAD, 0)  // Load 'this' onto the stack
                 slot += load(slot, type)  // Load the contents of the parameter onto the stack.
                 visitFieldInsn(PUTFIELD, schema.jvmName, name, schema.descriptors[name])
