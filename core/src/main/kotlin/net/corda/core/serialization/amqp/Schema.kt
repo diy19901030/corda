@@ -19,6 +19,10 @@ import net.corda.core.serialization.carpenter.CarpenterSchemas
 import net.corda.core.serialization.carpenter.Schema as CarpenterSchema
 import net.corda.core.serialization.carpenter.CarpenterSchemaFactory
 
+import net.corda.core.serialization.carpenter.CarpenterSchemas
+import net.corda.core.serialization.carpenter.Schema as CarpenterSchema
+import net.corda.core.serialization.carpenter.CarpenterSchemaFactory
+
 // TODO: get an assigned number as per AMQP spec
 val DESCRIPTOR_TOP_32BITS: Long = 0xc0da0000
 
